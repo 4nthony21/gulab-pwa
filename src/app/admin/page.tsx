@@ -15,18 +15,27 @@ export default function AdminPage() {
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
   const [busqueda, setBusqueda] = useState('');
 
+  const fetchPacientes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('pacientes')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error de Supabase:', error.message);
+        return;
+      }
+      
+      if (data) setPacientes(data);
+    } catch (err) {
+      console.error('Error inesperado:', err);
+    }
+  };
+  
   useEffect(() => {
     fetchPacientes();
   }, []);
-
-  const fetchPacientes = async () => {
-    const { data, error } = await supabase
-      .from('paciente')
-      .select('*')
-      .order('created_at', { ascending: false }); // Los más recientes primero
-
-    if (!error && data) setPacientes(data);
-  };
 
   // Filtro de búsqueda por nombre o DNI
   const pacientesFiltrados = pacientes.filter(p => 
