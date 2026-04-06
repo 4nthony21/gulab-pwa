@@ -24,6 +24,7 @@ export default function AdminPage() {
 
     const cargarDatos = async () => {
       try {
+        console.log("URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
         const { data, error } = await supabase
           .from('paciente')
           .select('*')
@@ -51,34 +52,39 @@ export default function AdminPage() {
   }, []); // El array vacío es vital para que solo corra UNA vez al cargar
 
   // --- FUNCIÓN PARA ACTUALIZAR (USADA POR EL MODAL) ---
-  const guardarCambios = async () => {
-    if (!editando) return;
+const guardarCambios = async () => {
+  if (!editando) return;
 
-    try {
-      const { error } = await supabase
-        .from('paciente')
-        .update({ 
-          nombre: editando.de_name.toUpperCase(), // Estandarizamos a mayúsculas
-          dni: editando.nu_dni 
-        })
-        .eq('id', editando.id);
+  try {
+    // Verificación de seguridad antes de disparar
+    if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+       throw new Error("La llave API se perdió en el camino");
+    }
 
-      if (error) throw error;
+    const { error } = await supabase
+      .from('paciente')
+      .update({ 
+        de_name: editando.de_name.toUpperCase(), 
+        nu_dni: editando.nu_dni 
+      })
+      .eq('id', editando.id);
 
-      // Actualizamos la lista local sin necesidad de otra petición a la red
-      setPacientes(pacientes.map(p => p.id === editando.id ? editando : p));
-      setEditando(null);
-      setDniBloqueado(true);
-      
-    } catch (error: unknown) {
+    if (error) throw error;
+
+    // Actualización exitosa en interfaz
+    setPacientes(pacientes.map(p => p.id === editando.id ? editando : p));
+    setEditando(null);
+    setDniBloqueado(true);
+    
+  } catch (err: unknown) {
       // Validamos el error de forma segura para TypeScript
-      if (error instanceof Error) {
-        alert("Error al actualizar: " + error.message);
+      if (err instanceof Error) {
+        alert("Error al actualizar: " + err.message);
       } else {
         alert("Ocurrió un error inesperado al actualizar");
       }
     }
-  };
+};
 
   // Filtro de búsqueda por nombre o DNI
   const pacientesFiltrados = pacientes.filter(p => 
