@@ -10,6 +10,23 @@ export default function RegistroPage() {
   const [de_lastname, setApellido] = useState('');
   const [qrValue, setQrValue] = useState(''); // Aquí guardaremos el ID para el QR
   const [cargando, setCargando] = useState(false);
+  const [errorDni, setErrorDni] = useState('');
+
+     // Validación básica del DNI (puedes mejorar esto según tus necesidades)
+
+  const manejarCambioDni = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const valor = e.target.value.replace(/\D/g, ""); // Elimina cualquier cosa que no sea número
+    
+    if (valor.length <= 8) {
+        setDni(valor);
+        // Validación en tiempo real
+        if (valor.length > 0 && valor.length < 8) {
+        setErrorDni('El DNI debe tener 8 dígitos');
+        } else {
+        setErrorDni('');
+        }
+    }
+    };
 
   const manejarRegistro = async () => {
     setCargando(true);
@@ -43,12 +60,18 @@ export default function RegistroPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700">DNI</label>
               <input 
-                type="text" 
+                type="text"
+                inputMode="numeric" // Optimiza el teclado en celulares
                 value={nu_dni}
-                onChange={(e) => setDni(e.target.value)}
-                className="mt-1 block w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900"
-                placeholder="Número de documento"
+                onChange={manejarCambioDni}
+                className={`mt-1 block w-full px-4 py-3 border rounded-lg outline-none transition-all ${
+                    nu_dni.length === 8 
+                    ? 'border-green-500 ring-2 ring-green-100' 
+                    : errorDni ? 'border-red-500' : 'border-gray-300'
+                }`}
+                placeholder="Ej: 45678901"
               />
+              {errorDni && <p className="text-red-500 text-sm">{errorDni}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Nombre</label>
@@ -73,10 +96,12 @@ export default function RegistroPage() {
             <button 
               type="button"
               onClick={manejarRegistro}
-              disabled={!nu_dni || !de_name || !de_lastname || cargando}
+              disabled={!nu_dni || !de_name || !de_lastname || cargando || nu_dni.length !== 8}
               className={`w-full font-bold py-3 px-4 rounded-xl mt-4 ${
-                cargando ? 'bg-gray-400' : 'bg-blue-600 text-white'
-              }`}
+                (nu_dni.length !== 8 || !de_name || cargando)
+                ? 'bg-gray-300 cursor-not-allowed' 
+                : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg'
+             }`}
             >
               {cargando ? 'Guardando...' : 'Generar QR'}
             </button>
