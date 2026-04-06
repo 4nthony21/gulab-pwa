@@ -14,28 +14,36 @@ interface Paciente {
 export default function AdminPage() {
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
   const [busqueda, setBusqueda] = useState('');
-
-  const fetchPacientes = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('pacientes')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error de Supabase:', error.message);
-        return;
-      }
-      
-      if (data) setPacientes(data);
-    } catch (err) {
-      console.error('Error inesperado:', err);
-    }
-  };
   
   useEffect(() => {
-    fetchPacientes();
-  }, []);
+    // Creamos una variable de control para evitar actualizaciones en componentes desmontados
+    let montado = true;
+
+    const cargarDatos = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('paciente')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        // Solo actualizamos el estado si el componente sigue "vivo" en pantalla
+        if (montado && data) {
+          setPacientes(data);
+        }
+      } catch (err) {
+        console.error("Error cargando pacientes:", err);
+      }
+    };
+
+    cargarDatos();
+
+    // Función de limpieza
+    return () => {
+      montado = false;
+    };
+  }, []); // El array vacío es vital para que solo corra UNA vez al cargar
 
   // Filtro de búsqueda por nombre o DNI
   const pacientesFiltrados = pacientes.filter(p => 
