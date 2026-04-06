@@ -64,10 +64,11 @@ const guardarCambios = async () => {
     const { error } = await supabase
       .from('paciente')
       .update({ 
-        de_name: editando.de_name.toUpperCase(), 
-        nu_dni: editando.nu_dni 
+        de_name: editando.de_name.trim().toUpperCase(), 
+        nu_dni: editando.nu_dni.trim()
       })
-      .eq('id', editando.id);
+      .eq('id', editando.id)
+      .select(); // IMPORTANTE: El .select() obliga a Supabase a devolver lo que cambió;
 
     if (error) throw error;
 
@@ -122,7 +123,13 @@ return (
                 {pacientesFiltrados.map((p) => (
                   <tr key={p.id} className="hover:bg-blue-50/50 transition-colors group">
                     <td className="px-6 py-4 text-sm text-gray-500">
-                      {new Date(p.created_at).toLocaleDateString('es-PE')}
+                      {new Date(p.created_at).toLocaleDateString('es-PE', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    })}
                     </td>
                     <td className="px-6 py-4 font-bold text-gray-800 uppercase">
                       {p.de_name}
@@ -157,7 +164,7 @@ return (
         </div>
       </div>
 
-      {/* MODAL DE EDICIÓN (CORREGIDO) */}
+      {/* MODAL DE EDICIÓN */}
       {editando && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl border border-gray-100 animate-in fade-in zoom-in duration-200">

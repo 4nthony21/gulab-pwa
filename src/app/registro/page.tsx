@@ -38,7 +38,10 @@ export default function RegistroPage() {
     const { error } = await supabase
       .from('paciente')
       .insert([
-        { nu_dni, de_name, de_lastname, co_qr: idUnico }
+        { nu_dni: nu_dni.trim(),
+          de_name: de_name.trim().toUpperCase(),
+          de_lastname: de_lastname.trim().toUpperCase(),
+          co_qr: idUnico }
       ]);
 
     if (error) {
