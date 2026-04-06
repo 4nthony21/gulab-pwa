@@ -56,7 +56,7 @@ export default function AdminPage() {
 
     try {
       const { error } = await supabase
-        .from('pacientes')
+        .from('paciente')
         .update({ 
           nombre: editando.de_name.toUpperCase(), // Estandarizamos a mayúsculas
           dni: editando.nu_dni 
