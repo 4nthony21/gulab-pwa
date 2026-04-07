@@ -1,87 +1,124 @@
-'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+//import { useEffect, useState } from 'react';
+import { notFound } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import VisualizadorQR from '@/components/VisualizadorQR';
+
 
 // Definimos qué datos esperamos del paciente
-interface Paciente {
-  de_name: string;
-  nu_dni: string;
+interface DetalleResultado {
+  id: string;
+  status: string;
+  analysis: string;
+  cod_qr: string;
   created_at: string;
+  customers: {
+    first_name: string;
+    last_name: string;
+    dni: string;
+  } | { 
+    first_name: string;
+    last_name: string;
+    dni: string;
+  }[] | null;
 }
 
-export default function ResultadoPage() {
-  const { id } = useParams(); // Captura el ID de la URL (ej: 456789-12345)
-  const [paciente, setPaciente] = useState<Paciente | null>(null);
-  const [cargando, setCargando] = useState(true);
+export default async function ResultadoPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params; // <--- Línea vital en versiones nuevas
+  const { data: orden, error } = await supabase
+    .from('orders')
+    .select(`
+      *,
+      customers (
+        first_name,
+        last_name,
+        dni
+      )
+    `)
+    .eq('cod_qr', id) // Buscamos por el código que viene en la URL
+    .maybeSingle();
 
-  useEffect(() => {
-    const obtenerDatos = async () => {
-      const { data, error } = await supabase
-        .from('paciente')
-        .select('de_name, nu_dni, created_at')
-        .eq('co_qr', id) // Buscamos el registro que coincida con el QR
-        .single();
+  // 2. Si hay error o no existe, mostramos 404
+    if (error || !orden) {
+      console.error("Error al buscar orden:", error);
+      return notFound();
+    }
 
-      if (!error && data) {
-        setPaciente(data);
-      }
-      setCargando(false);
-    };
+    // 3. Normalizamos los datos del cliente (manejamos si viene como array u objeto)
+    const cliente = Array.isArray(orden.customers) ? orden.customers[0] : orden.customers;
 
-    if (id) obtenerDatos();
-  }, [id]);
+    return (
+      <main className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden">
 
-  if (cargando) return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
-    </div>
-  );
-
-  if (!paciente) return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gray-50">
-      <h1 className="text-xl font-bold text-red-600">Código no válido</h1>
-      <p className="text-gray-500 text-center">No encontramos registros asociados a este código QR.</p>
-    </div>
-  );
-
-  return (
-    <div className="min-h-screen bg-gray-50 p-6 flex flex-col items-center">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden mt-10">
-        {/* Encabezado Estilo Laboratorio */}
-        <div className="bg-blue-600 p-6 text-white text-center">
-          <h1 className="text-xl font-bold uppercase tracking-wider">Resultado de Laboratorio</h1>
-        </div>
-
-        <div className="p-8 space-y-6">
-          <div className="border-b pb-4">
-            <p className="text-xs text-gray-400 uppercase font-bold">Paciente</p>
-            <p className="text-lg text-gray-900 font-medium uppercase">{paciente.de_name}</p>
+          {/* Cabecera del Laboratorio */}
+          <div className="bg-blue-600 p-6 text-center text-white">
+            <h1 className="text-xl font-bold uppercase tracking-wider">Laboratorio Clínico</h1>
+            <p className="text-sm opacity-80">Resultados en Línea</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-xs text-gray-400 uppercase font-bold">DNI</p>
-              <p className="text-gray-900">{paciente.nu_dni}</p>
+          <div className="p-6 space-y-6">
+            {/* Datos del Paciente */}
+            <div className="border-b pb-4">
+              <p className="text-[10px] text-gray-400 font-bold uppercase">Paciente</p>
+              <h2 className="text-lg font-bold text-gray-800">
+                {cliente?.first_name} {cliente?.last_name}
+              </h2>
+              <p className="text-sm text-gray-500 font-mono">DNI: {cliente?.dni}</p>
             </div>
-            <div>
-              <p className="text-xs text-gray-400 uppercase font-bold">Fecha</p>
-              <p className="text-gray-900">{new Date(paciente.created_at).toLocaleDateString()}</p>
+
+            {/* 🚀 Pasamos el código al componente hijo */}
+            <div className="p-8 text-center my-6 border-b pb-4">
+              <VisualizadorQR codigo={orden.cod_qr} />
+            </div>
+
+            {/* Detalles del Análisis */}
+            <div className="space-y-4">
+              <div>
+                <p className="text-[10px] text-gray-400 font-bold uppercase">Examen Realizado</p>
+                <p className="text-md font-semibold text-gray-700">{orden.analysis}</p>
+              </div>
+
+              <div className="flex justify-between items-end">
+                <div>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase">Fecha de Toma</p>
+                  <p className="text-sm text-gray-600">
+                    {new Date(orden.created_at).toLocaleDateString('es-PE')}
+                  </p>
+                </div>
+                
+                {/* Badge de Estado */}
+                <div className={`px-3 py-1 rounded-full text-xs font-black uppercase ${
+                  orden.status === 'Listo' 
+                  ? 'bg-green-100 text-green-700' 
+                  : 'bg-yellow-100 text-yellow-700'
+                }`}>
+                  {orden.status}
+                </div>
+              </div>
+            </div>
+
+            {/* Mensaje Informativo */}
+            <div className="bg-blue-50 p-4 rounded-lg">
+              {orden.status === 'Listo' ? (
+                <p className="text-sm text-blue-800 text-center">
+                  ✅ Sus resultados están listos. Por favor, acérquese a recepción con su DNI para recoger el informe físico o descárguelo aquí.
+                </p>
+              ) : (
+                <p className="text-sm text-yellow-800 text-center">
+                  ⏳ Su muestra está en proceso. El tiempo estimado de entrega es de 24 a 48 horas.
+                </p>
+              )}
             </div>
           </div>
 
-          {/* Estado del Examen (Simulado por ahora) */}
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-center space-x-3">
-            <div className="h-3 w-3 bg-yellow-400 rounded-full animate-pulse"></div>
-            <p className="text-sm text-yellow-700 font-medium">Muestra en proceso de análisis</p>
+          {/* Footer con ID único */}
+          <div className="bg-gray-100 p-4 text-center">
+            <p className="text-[9px] text-gray-400 font-mono uppercase">
+              Autenticidad verificada · ID: {orden.cod_qr}
+            </p>
           </div>
         </div>
-      </div>
-      
-      <p className="mt-8 text-gray-400 text-[10px] text-center uppercase tracking-widest">
-        Este documento es una visualización digital de resultados.
-      </p>
-    </div>
-  );
-}
+      </main>
+    );
+  }

@@ -1,19 +1,56 @@
 'use client';
 
-import { useState } from 'react';
+import { useState,useEffect } from 'react';
 import { supabase } from '@/lib/supabase'; // Importamos la conexión
 import { QRCodeSVG } from 'qrcode.react'; // Librería para el QR
+import { useRouter } from 'next/dist/client/components/navigation';
 
 export default function RegistroPage() {
-  const [nu_dni, setDni] = useState('');
-  const [de_name, setNombre] = useState('');
-  const [de_lastname, setApellido] = useState('');
+  const [dni, setDni] = useState('');
+  const [first_name, setNombre] = useState('');
+  const [last_name, setApellido] = useState('');
   const [qrValue, setQrValue] = useState(''); // Aquí guardaremos el ID para el QR
   const [cargando, setCargando] = useState(false);
   const [errorDni, setErrorDni] = useState('');
+  const router = useRouter();
 
-     // Validación básica del DNI (puedes mejorar esto según tus necesidades)
+  // --- PRIMER EFFECT: Seguridad (Solo personal autorizado) ---
+  useEffect(() => {
+    const verificarSesion = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        // Si no hay sesión iniciada, redirigimos al login de inmediato
+        router.push('/login'); 
+      }
+    };
+    verificarSesion();
+  }, []); // [] significa: "Ejecuta esto solo UNA VEZ al cargar la página"
 
+  // 2. SECCIÓN DE AUTOCOMPLETADO
+  // Este "efecto" se dispara cada vez que el valor de 'dni' cambia
+  useEffect(() => {
+    const buscarClienteExistente = async () => {
+      // Solo buscamos cuando el DNI está completo (8 dígitos)
+      if (dni.length === 8) {
+        const { data, error } = await supabase
+          .from('customers') // Buscamos en la tabla de identidad
+          .select('first_name, last_name') // Solo necesitamos el nombre y apellido
+          .eq('dni', dni)
+          .single(); // Traemos solo un resultado
+
+        if (data && !error) {
+          // Si lo encuentra, llenamos el campo nombre automáticamente
+          setNombre(data.first_name);
+          setApellido(data.last_name);
+          setErrorDni(''); // Limpiamos errores si los hubiera
+        }
+      }
+    };
+
+    buscarClienteExistente();
+  }, [dni]); // [dni] es la dependencia: "vigila este valor"
+
+    // Validación básica del DNI (puedes mejorar esto según tus necesidades)
   const manejarCambioDni = (e: React.ChangeEvent<HTMLInputElement>) => {
     const valor = e.target.value.replace(/\D/g, ""); // Elimina cualquier cosa que no sea número
     
@@ -29,28 +66,45 @@ export default function RegistroPage() {
     };
 
   const manejarRegistro = async () => {
-    setCargando(true);
+    if (dni.length !== 8 || !first_name || !last_name) return;
+        setCargando(true);
     
-    // 1. Generamos un ID único para este registro (puedes usar el DNI + timestamp)
-    const idUnico = `${nu_dni}-${Date.now()}`;
+    try {
+    // 1. Asegurar que el Cliente existe (Tabla 'customers')
+    // Usamos 'upsert' para que si el DNI ya existe, solo devuelva el ID
+    const { data: cliente, error: errorCliente } = await supabase
+      .from('customers')
+      .upsert({ dni, first_name: first_name.trim().toUpperCase(), last_name: last_name.trim().toUpperCase() }, { onConflict: 'dni' })
+      .select()
+      .single();
 
-    // 2. Guardamos en Supabase
-    const { error } = await supabase
-      .from('paciente')
+    if (errorCliente) throw errorCliente;
+    // 2. Generar código QR único para ESTA visita
+    const codigoUnico = `${dni}-${Date.now()}`;
+
+    // 3. PASO TRES: Crear la Orden de Atención (Tabla 'orders')
+    const { error: errorOrden } = await supabase
+      .from('orders')
       .insert([
-        { nu_dni: nu_dni.trim(),
-          de_name: de_name.trim().toUpperCase(),
-          de_lastname: de_lastname.trim().toUpperCase(),
-          co_qr: idUnico }
+        {
+          customer_id: cliente.id,
+          cod_qr: codigoUnico,
+          analysis: 'Pendiente de definir', // Aquí podrías añadir un input de texto luego
+          status: 'Pendiente'
+        }
       ]);
 
-    if (error) {
-      alert('Error al guardar: ' + error.message);
-    } else {
-      // 3. Si todo sale bien, mostramos el QR
-      setQrValue(`${window.location.origin}/resultado/${idUnico}`);
+    if (errorOrden) throw errorOrden;
+
+    // 4. PASO CUATRO: Mostrar el QR generado
+    setQrValue(`${window.location.origin}/resultado/${codigoUnico}`);
+    
+    } catch (err: unknown) {
+        console.error("Error en el flujo de registro:", err);
+        alert("Error al registrar: " + (err as Error).message);
+    } finally {
+        setCargando(false);
     }
-    setCargando(false);
   };
 
   return (
@@ -65,10 +119,10 @@ export default function RegistroPage() {
               <input 
                 type="text"
                 inputMode="numeric" // Optimiza el teclado en celulares
-                value={nu_dni}
+                value={dni}
                 onChange={manejarCambioDni}
                 className={`mt-1 block w-full px-4 py-3 border rounded-lg outline-none transition-all ${
-                    nu_dni.length === 8 
+                    dni.length === 8 
                     ? 'border-green-500 ring-2 ring-green-100' 
                     : errorDni ? 'border-red-500' : 'border-gray-300'
                 }`}
@@ -80,7 +134,7 @@ export default function RegistroPage() {
               <label className="block text-sm font-medium text-gray-700">Nombre</label>
               <input 
                 type="text" 
-                value={de_name}
+                value={first_name}
                 onChange={(e) => setNombre(e.target.value)}
                 className="mt-1 block w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900"
                 placeholder="Nombre del paciente"
@@ -90,7 +144,7 @@ export default function RegistroPage() {
               <label className="block text-sm font-medium text-gray-700">Apellido</label>
               <input 
                 type="text" 
-                value={de_lastname}
+                value={last_name}
                 onChange={(e) => setApellido(e.target.value)}
                 className="mt-1 block w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900"
                 placeholder="Apellido del paciente"
@@ -99,9 +153,9 @@ export default function RegistroPage() {
             <button 
               type="button"
               onClick={manejarRegistro}
-              disabled={!nu_dni || !de_name || !de_lastname || cargando || nu_dni.length !== 8}
+              disabled={!dni || !first_name || !last_name || cargando || dni.length !== 8}
               className={`w-full font-bold py-3 px-4 rounded-xl mt-4 ${
-                (nu_dni.length !== 8 || !de_name || cargando)
+                (dni.length !== 8 || !first_name || cargando || !last_name)
                 ? 'bg-gray-300 cursor-not-allowed' 
                 : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg'
              }`}
