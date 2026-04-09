@@ -28,13 +28,17 @@ interface CustomerOrder {
 
 export default function AdminPage() {
   const [ordenes, setOrdenes] = useState<CustomerOrder[]>([]);
-  const [busqueda, setBusqueda] = useState('');
+  //const [busqueda, setBusqueda] = useState('');
   const [editando, setEditando] = useState<CustomerOrder | null>(null);
   const [dniBloqueado, setDniBloqueado] = useState(true);
   const [cargando, setCargando] = useState(true);
   const [nombreTemp, setNombreTemp] = useState('');
   const [apellidoTemp, setApellidoTemp] = useState('');
   const [dniTemp, setDniTemp] = useState('');
+
+  const [busqueda, setBusqueda] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('Todos');
+  const [filtroFecha, setFiltroFecha] = useState(''); // Formato YYYY-MM-DD
 
   // Función para abrir el modal cargando los datos actuales
   const abrirModal = (orden: CustomerOrder) => {
@@ -131,48 +135,90 @@ const guardarCambiosCliente = async () => {
   }
 };
 
-  // Filtro de búsqueda por nombre o DNI
-  const ordenesFiltrados = ordenes.filter(p => {
-    const customer = Array.isArray(p.customers) ? p.customers[0] : p.customers;
+  const datosFiltrados = ordenes.filter((orden) => {
+    // 1. Extraemos el cliente (dependiendo de cómo se llame tu relación)
+    const cliente = Array.isArray(orden.customers) ? orden.customers[0] : orden.customers;
+    const nombreCompleto = `${cliente?.first_name} ${cliente?.last_name}`.toLowerCase();
+    
+    // 2. Filtro de Texto (Nombre o DNI)
+    const coincideTexto = 
+      nombreCompleto.includes(busqueda.toLowerCase()) || 
+      cliente?.dni.includes(busqueda);
 
-  // Si no hay cliente o la búsqueda está vacía, mostramos todo
-    if (!customer || !busqueda) return true;
+    // 3. Filtro de Estado
+    const coincideEstado = filtroEstado === "Todos" || orden.status === filtroEstado;
 
-    const termino = busqueda.toLowerCase();
-    const nombreCompleto = `${customer.first_name} ${customer.last_name}`.toLowerCase();
-    const dni = customer.dni.toLowerCase();
+    // 4. Filtro de Fecha (comparamos solo la parte YYYY-MM-DD de created_at exacto de Perú)
+    const fechaOrden = new Date(orden.created_at).toLocaleDateString("en-CA", {timeZone: "America/Lima"});
+    const coincideFecha = !filtroFecha || fechaOrden === filtroFecha;
 
-    // El filtro coincide si el término está en el nombre O en el DNI
-    return nombreCompleto.includes(termino) || dni.includes(termino);
-});
+    return coincideTexto && coincideEstado && coincideFecha;
+  });
+
+
 return (
     <div className="min-h-screen bg-gray-100 p-4 md:p-10 relative font-sans">
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
           <h1 className="text-3xl font-bold text-gray-800 tracking-tight">Panel de Control</h1>
-          <div className="relative">
-             <input 
-              type="text"
-              placeholder="Buscar por nombre o DNI..."
-              className="w-full md:w-80 px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 transition-all"
-              onChange={(e) => setBusqueda(e.target.value)}
-            />
-          </div>
-            {busqueda && (
-            <button 
-              onClick={() => setBusqueda('')}
-              className="text-sm text-gray-500 hover:text-blue-600 font-medium"
-            >
-              Limpiar filtro
-            </button>
-          )} 
           <div className="text-sm text-gray-400">
-            Encontrados: {ordenesFiltrados.length}
+            Encontrados: {datosFiltrados.length}
           </div>
         </div>
 
         <div className="bg-white shadow-2xl rounded-3xl overflow-hidden border border-gray-200">
           <div className="overflow-x-auto">
+            <div className="bg-white p-4 rounded-t-xl border-x border-t border-gray-200 flex flex-wrap gap-4 items-end shadow-sm">
+            
+            {/* 🔍 Buscador Principal (Nombre o DNI) */}
+            <div className="flex-1 min-w-50">
+              <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Buscar Paciente</label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">🔍</span>
+                <input
+                  type="text"
+                  placeholder="Nombre o DNI..."
+                  className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm text-gray-500 transition-all"
+                  value={busqueda}
+                  onChange={(e) => setBusqueda(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* 📋 Filtro por Estado */}
+            <div className="w-40">
+              <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Estado</label>
+              <select
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white cursor-pointer text-gray-500"
+                value={filtroEstado}
+                onChange={(e) => setFiltroEstado(e.target.value)}
+              >
+                <option value="Todos">Todos</option>
+                <option value="Pendiente">⏳ Pendientes</option>
+                <option value="Listo">✅ Listos</option>
+              </select>
+            </div>
+
+            {/* 📅 Filtro por Fecha */}
+            <div className="w-44">
+              <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Fecha de Registro</label>
+              <input
+                type="date"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm cursor-pointer text-gray-500"
+                value={filtroFecha}
+                onChange={(e) => setFiltroFecha(e.target.value)}
+              />
+            </div>
+
+            {/* 🧹 Botón Limpiar */}
+            <button
+              onClick={() => { setBusqueda(""); setFiltroEstado("Todos"); setFiltroFecha(""); }}
+              className="px-4 py-2 text-xs font-bold text-gray-400 hover:text-red-500 transition-colors uppercase"
+              title="Limpiar filtros"
+            >
+              Limpiar
+            </button>
+          </div>
             <table className="w-full text-left">
               <thead className="bg-blue-600 text-white text-xs uppercase tracking-widest">
                 <tr>
@@ -183,7 +229,7 @@ return (
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {ordenesFiltrados.map((orden) => {
+                {datosFiltrados.map((orden) => {
                   const customer = Array.isArray(orden.customers)
                     ? orden.customers[0]
                     : orden.customers;
@@ -225,7 +271,7 @@ return (
               </tbody>
             </table>
           </div>
-          {ordenesFiltrados.length === 0 && (
+          {datosFiltrados.length === 0 && (
             <div className="p-10 text-center text-gray-400">
               No se encontraron registros.
             </div>

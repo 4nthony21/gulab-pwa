@@ -12,7 +12,18 @@ export default function RegistroPage() {
   const [qrValue, setQrValue] = useState(''); // Aquí guardaremos el ID para el QR
   const [cargando, setCargando] = useState(false);
   const [errorDni, setErrorDni] = useState('');
+  const [phone, setPhone] = useState('');
+  const [errorPhone, setErrorPhone] = useState('');
+  const [email, setEmail] = useState('');
   const router = useRouter();
+
+  interface ClientePayload {
+  dni: string;
+  first_name: string;
+  last_name: string;
+  phone?: string;
+  email?: string
+}
 
   // --- PRIMER EFFECT: Seguridad (Solo personal autorizado) ---
   useEffect(() => {
@@ -34,7 +45,7 @@ export default function RegistroPage() {
       if (dni.length === 8) {
         const { data, error } = await supabase
           .from('customers') // Buscamos en la tabla de identidad
-          .select('first_name, last_name') // Solo necesitamos el nombre y apellido
+          .select('first_name, last_name, phone, email') // Solo necesitamos el nombre y apellido
           .eq('dni', dni)
           .single(); // Traemos solo un resultado
 
@@ -42,6 +53,8 @@ export default function RegistroPage() {
           // Si lo encuentra, llenamos el campo nombre automáticamente
           setNombre(data.first_name);
           setApellido(data.last_name);
+          setPhone(data.phone);
+          setEmail(data.email);
           setErrorDni(''); // Limpiamos errores si los hubiera
         }
       }
@@ -65,16 +78,44 @@ export default function RegistroPage() {
     }
     };
 
+    // Validar Teléfono Peruano (9 dígitos, empieza con 9)
+    const validarTelefono = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const numero = e.target.value.replace(/\D/g, ""); // Elimina cualquier cosa que no sea número
+    if (numero.length <= 9) {
+        setPhone(numero);
+        // Validación en tiempo real
+        if (numero.length > 0 && numero.length < 9) {
+        setErrorPhone('El teléfono debe tener 9 dígitos (9XXXXXXXX)');
+        } else {
+        setErrorPhone('');
+        }
+    }
+    };
+
+    // Validar Email
+    const validarEmail = (correo: string) => {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return correo === "" || regex.test(correo); // true si es vacío o válido
+    };
+
   const manejarRegistro = async () => {
+    // 1. Objeto base con los datos obligatorios
+    const data: ClientePayload = {
+        dni: dni.trim(),
+        first_name: first_name.trim().toUpperCase(),
+        last_name: last_name.trim().toUpperCase()
+    };
+
     if (dni.length !== 8 || !first_name || !last_name) return;
         setCargando(true);
-    
     try {
     // 1. Asegurar que el Cliente existe (Tabla 'customers')
     // Usamos 'upsert' para que si el DNI ya existe, solo devuelva el ID
+    if (phone && phone.trim() !== "") data.phone = phone.trim();
+    if (email && email.trim() !== "") data.email = email.trim();
     const { data: cliente, error: errorCliente } = await supabase
       .from('customers')
-      .upsert({ dni, first_name: first_name.trim().toUpperCase(), last_name: last_name.trim().toUpperCase() }, { onConflict: 'dni' })
+      .upsert(data, { onConflict: 'dni' })
       .select()
       .single();
 
@@ -121,7 +162,7 @@ export default function RegistroPage() {
                 inputMode="numeric" // Optimiza el teclado en celulares
                 value={dni}
                 onChange={manejarCambioDni}
-                className={`mt-1 block w-full px-4 py-3 border rounded-lg outline-none transition-all ${
+                className={`mt-1 block w-full px-4 py-3 border rounded-lg outline-none text-gray-900 transition-all ${
                     dni.length === 8 
                     ? 'border-green-500 ring-2 ring-green-100' 
                     : errorDni ? 'border-red-500' : 'border-gray-300'
@@ -150,6 +191,42 @@ export default function RegistroPage() {
                 placeholder="Apellido del paciente"
               />
             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            {/* Campo Teléfono */}
+            <div>
+                <label className="block text-sm font-medium text-gray-700">Celular (Opcional)</label>
+                <input
+                type="tel"
+                inputMode="numeric"
+                value={phone ?? ""}
+                onChange={validarTelefono}
+                className={`mt-1 block w-full px-4 py-3 border rounded-lg outline-none text-gray-900 transition-all ${
+                    phone?.length === 9 ? 'border-green-500 ring-2 ring-green-100' 
+                    : errorPhone ? 'border-red-500' 
+                    : phone?.length === 0 ? 'border-gray-300' : 'border-gray-300'
+                }`}
+                placeholder="Ej: 987654321"
+                />
+                {errorPhone && <p className="text-[10px] text-red-500 mt-1">{errorPhone}</p>
+                }
+            </div>
+            {/* Campo Email */}
+            <div>
+                <label className="block text-sm font-medium text-gray-700">Correo (Opcional)</label>
+                <input
+                type="email"
+                placeholder="paciente@correo.com"
+                className={`mt-1 block w-full px-4 py-3 border rounded-lg outline-none text-gray-900 transition-all ${
+                    email && !validarEmail(email) ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                }`}
+                value={email ?? ""}
+                onChange={(e) => setEmail(e.target.value)}
+                />
+                {email && !validarEmail(email) && (
+                <p className="text-[10px] text-red-500 mt-1">Formato de correo inválido</p>
+                )}
+            </div>
+            </div>
             <button 
               type="button"
               onClick={manejarRegistro}
@@ -173,7 +250,7 @@ export default function RegistroPage() {
               <span className="text-sm font-normal text-gray-400">Escanea este código para ver los resultados.</span>
             </p>
             <button 
-              onClick={() => {setQrValue(''); setDni(''); setNombre(''); setApellido('');}}
+              onClick={() => {setQrValue(''); setDni(''); setNombre(''); setApellido('');setPhone(''); setEmail('');}}
               className="text-blue-600 font-semibold underline"
             >
               Registrar otro paciente
