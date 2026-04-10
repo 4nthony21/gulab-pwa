@@ -22,7 +22,10 @@ export default function RegistroPage() {
   first_name: string;
   last_name: string;
   phone?: string;
-  email?: string
+  email?: string;
+  updated_by?: string;
+  updated_at: string;
+  last_origin: string
 }
 
   // --- PRIMER EFFECT: Seguridad (Solo personal autorizado) ---
@@ -99,12 +102,19 @@ export default function RegistroPage() {
     };
 
   const manejarRegistro = async () => {
-    // 1. Objeto base con los datos obligatorios
+    // 1. Obtener el usuario actual desde el cliente de Supabase
+    const { data: { user } } = await supabase.auth.getUser();
+    // 2. Objeto base con los datos obligatorios
     const data: ClientePayload = {
         dni: dni.trim(),
         first_name: first_name.trim().toUpperCase(),
-        last_name: last_name.trim().toUpperCase()
+        last_name: last_name.trim().toUpperCase(),
+        // --- Log Auditoría ---
+        updated_by: user?.id, // ID único del usuario en Auth
+        updated_at: new Date().toISOString(),
+        last_origin: 'registro-pwa' // Identificador de la interfaz
     };
+    
 
     if (dni.length !== 8 || !first_name || !last_name) return;
         setCargando(true);

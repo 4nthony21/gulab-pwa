@@ -1,42 +1,55 @@
-'use client';
-import { useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { useRouter } from 'next/navigation';
+'use client'
+import { useState } from 'react'
+//import { supabase } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/utils/supabase/client'
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const router = useRouter();
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const router = useRouter()
+  const supabase = createClient()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-
+    
+    const { error } = await supabase.auth.signInWithPassword({ 
+      email, 
+      password 
+    });
+    
     if (error) {
       alert("Error: " + error.message);
-    } else {
-      router.push('/registro'); // Si entra bien, la mandamos al registro
+      return;
     }
+
+    // 🔥 El secreto: Refrescar el servidor antes de navegar
+    // Esto fuerza a Next.js a re-evaluar el proxy.ts con la nueva cookie
+    router.refresh(); 
+    
+    setTimeout(() => {
+      window.location.href = '/registro';
+  }, 500); 
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4">
-      <form onSubmit={handleLogin} className="bg-white p-8 rounded shadow-md w-full max-w-sm">
-        <h2 className="text-2xl mb-4 font-bold text-center">Acceso Laboratorio</h2>
+    <main className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+      <form onSubmit={handleLogin} className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
+        <h1 className="text-2xl font-bold mb-6 text-center text-slate-800">Login</h1>
         <input 
-          type="email" placeholder="Email" 
-          className="border p-2 w-full mb-4"
+          type="email" placeholder="Correo" 
+          className="w-full p-3 border rounded-lg mb-4 outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 transition-all"
           onChange={(e) => setEmail(e.target.value)} 
         />
         <input 
           type="password" placeholder="Contraseña" 
-          className="border p-2 w-full mb-4"
+          className="w-full p-3 border rounded-lg mb-6 outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 transition-all"
           onChange={(e) => setPassword(e.target.value)} 
         />
-        <button type="submit" className="bg-blue-600 text-white p-2 w-full rounded">
+        <button className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition-colors">
           Entrar
         </button>
       </form>
-    </div>
-  );
+    </main>
+  )
 }

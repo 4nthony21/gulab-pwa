@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import SubirResultadoModal from '@/components/SubirResultadoModal'
 
 interface CustomerOrder {
   id: string;
@@ -40,6 +41,9 @@ export default function AdminPage() {
   const [filtroEstado, setFiltroEstado] = useState('Todos');
   const [filtroFecha, setFiltroFecha] = useState(''); // Formato YYYY-MM-DD
 
+  const [ordenSeleccionada, setOrdenSeleccionada] = useState<CustomerOrder | null>(null)
+  const clienteSeleccionado = Array.isArray(ordenSeleccionada?.customers) ? ordenSeleccionada.customers[0] : ordenSeleccionada?.customers;
+
   // Función para abrir el modal cargando los datos actuales
   const abrirModal = (orden: CustomerOrder) => {
     setEditando(orden);
@@ -51,6 +55,16 @@ export default function AdminPage() {
     setDniBloqueado(true); // Siempre abrir con el DNI bloqueado por seguridad
   };
   
+  // Función auxiliar para obtener el DNI de forma segura
+  const getDni = (orden: CustomerOrder) => {
+    if (!orden.customers) return "";
+    
+    // Si es un array, tomamos el primero. Si es un objeto, lo usamos directo.
+    return Array.isArray(orden.customers) 
+      ? orden.customers[0]?.dni 
+      : orden.customers.dni;
+  };
+
   useEffect(() => {
     // Creamos una variable de control para evitar actualizaciones en componentes desmontados
     let montado = true;
@@ -264,12 +278,27 @@ return (
                         >
                           VER QR
                         </a>
+                        {/* Botón para abrir el modal */}
+                        <button 
+                          onClick={() => setOrdenSeleccionada(orden)}
+                          className="bg-[#0055ff] text-white px-3 py-1 rounded-md text-xs font-bold shadow-sm"
+                        >
+                          RESULTADOS
+                        </button>
                       </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
+            {/* RENDERIZADO CONDICIONAL DEL MODAL */}
+            {ordenSeleccionada && (
+              <SubirResultadoModal 
+                ordenId={ordenSeleccionada.id} 
+                pacienteDni={getDni(ordenSeleccionada)} 
+                onClose={() => setOrdenSeleccionada(null)} 
+              />
+            )}
           </div>
           {datosFiltrados.length === 0 && (
             <div className="p-10 text-center text-gray-400">
