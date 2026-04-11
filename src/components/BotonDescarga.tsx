@@ -16,7 +16,14 @@ export default function BotonDescarga({ filePath }: { filePath: string }) {
         .createSignedUrl(filePath, 60) // Expira en 60 segundos
 
       if (error) throw error
-      window.open(data.signedUrl, '_blank')
+      const link = document.createElement('a');
+      link.href = data.signedUrl;
+      link.target = '_blank';
+      // Esto ayuda a que móviles entiendan que deben abrirlo o guardarlo
+      link.setAttribute('download', `resultado_${Date.now()}.pdf`); 
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     } catch (err) {
       alert("No se pudo abrir el archivo")
     } finally {
