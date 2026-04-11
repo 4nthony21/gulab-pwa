@@ -35,7 +35,10 @@ export default function SubirResultadoModal({ ordenId, pacienteDni, onClose }: U
     // 1. Subida al Storage
     const { error: storageError } = await supabase.storage
       .from('archive_results')
-      .upload(filePath, file);
+      .upload(filePath, file,{
+    contentType: 'application/pdf', // <--- ESTO ES VITAL
+    upsert: true
+    });
 
     if (storageError) throw storageError;
 
