@@ -69,7 +69,7 @@ export default async function ResultadoPage({ params }: { params: Promise<{ id: 
 
             {/* 🚀 Pasamos el código al componente hijo */}
             <div className="p-8 text-center my-6 border-b pb-4">
-              <VisualizadorQR codigo={orden.cod_qr} />
+              <VisualizadorQR cod_qr={orden.cod_qr} />
             </div>
 
             {/* Detalles del Análisis */}

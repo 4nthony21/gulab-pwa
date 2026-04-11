@@ -9,9 +9,9 @@ interface Resultado {
   file_path: string;
 }
 
-export default async function ConsultaPaciente({ params }: { params: Promise<{ dni: string }> }) {
+export default async function ConsultaPaciente({ params }: { params: Promise<{ cod_qr: string }> }) {
   // 1. Next.js 15 requiere await para los params y cookies
-  const { dni } = await params
+  const { cod_qr } = await params
   const cookieStore = await cookies()
   
   const supabase = createServerClient(
@@ -34,9 +34,9 @@ export default async function ConsultaPaciente({ params }: { params: Promise<{ d
   // 2. Consulta a la DB. 
   // OJO: Si tu tabla se llama 'resultados', el select debe ser results(*) o resultados(*)
   const { data: paciente, error } = await supabase
-    .from('customers')
+    .from('orders')
     .select('*, results(*)') 
-    .eq('dni', dni)
+    .eq('cod_qr', cod_qr)
     .single()
 
   if (error || !paciente) {
