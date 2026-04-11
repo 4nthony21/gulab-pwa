@@ -78,7 +78,7 @@ export default async function ConsultaPaciente({ params }: { params: Promise<{ c
           </div>
           <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Identidad del Paciente</h2>
           <p className="text-xl font-bold text-slate-800 uppercase leading-tight">
-            {paciente.first_name} <br/> {paciente.last_name}
+            {paciente.customers?.first_name} <br/> {paciente.customers?.last_name}
           </p>
           <div className="mt-4 pt-4 border-t border-slate-50 flex justify-between items-end">
              <div>
