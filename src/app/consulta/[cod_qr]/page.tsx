@@ -83,7 +83,7 @@ export default async function ConsultaPaciente({ params }: { params: Promise<{ c
           <div className="mt-4 pt-4 border-t border-slate-50 flex justify-between items-end">
              <div>
                <p className="text-[10px] text-slate-400 uppercase font-bold">Documento</p>
-               <p className="text-sm font-mono font-bold text-slate-700">{paciente.dni}</p>
+               <p className="text-sm font-mono font-bold text-slate-700">{paciente.customers?.dni}</p>
              </div>
              <span className="bg-green-100 text-green-700 text-[10px] px-2 py-1 rounded-full font-bold">ACTIVO</span>
           </div>
