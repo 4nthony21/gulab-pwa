@@ -31,13 +31,25 @@ export default async function ConsultaPaciente({ params }: { params: Promise<{ c
     }
   )
 
-  // 2. Consulta a la DB. 
-  // OJO: Si tu tabla se llama 'resultados', el select debe ser results(*) o resultados(*)
+  // 2. Consulta a la DB.
   const { data: paciente, error } = await supabase
-    .from('orders')
-    .select('*, results(*)') 
-    .eq('cod_qr', cod_qr)
-    .single()
+  .from('orders')
+  .select(`
+    *,
+    customers (
+      dni,
+      first_name,
+      last_name
+    ),
+    results (
+      id,
+      nombre_prueba,
+      file_path,
+      created_at
+    )
+  `)
+  .eq('cod_qr', cod_qr) // Filtramos por el código del QR scanneado
+  .single();
 
   if (error || !paciente) {
     return (
