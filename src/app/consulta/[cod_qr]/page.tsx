@@ -37,15 +37,8 @@ export default async function ConsultaPaciente({ params }: { params: Promise<{ c
   .select(`
     *,
     customers (
-      dni,
-      first_name,
-      last_name
-    ),
-    results (
-      id,
-      nombre_prueba,
-      file_path,
-      created_at
+      *,
+    results (*)
     )
   `)
   .eq('cod_qr', cod_qr) // Filtramos por el código del QR scanneado
@@ -93,9 +86,9 @@ export default async function ConsultaPaciente({ params }: { params: Promise<{ c
         <section className="bg-white rounded-2xl p-6 shadow-sm min-h-75">
           <h2 className="text-[10px] font-black text-[#0055ff] uppercase tracking-[0.2em] mb-6">Mis Resultados Disponibles</h2>
           
-          {paciente.results && paciente.results.length > 0 ? (
+          {paciente.customers.results && paciente.customers.results.length > 0 ? (
             <div className="space-y-4">
-              {paciente.results.map((res: Resultado) => (
+              {paciente.customers.results.map((res: Resultado) => (
                 <div key={res.id} className="group p-4 bg-white border-2 border-slate-50 rounded-2xl hover:border-[#0055ff20] hover:bg-blue-50/30 transition-all">
                   <div className="flex items-center justify-between">
                     <div>

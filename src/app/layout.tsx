@@ -12,11 +12,18 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: "#2563eb",
+};
+
 export const metadata: Metadata = {
   title: "Laboratorio PWA",
   description: "Registro de pacientes",
-  manifest: "/manifest.json", // <--- ¡Añade esto!
-  themeColor: "#2563eb",
+  manifest: "/manifest.json"
 };
 
 export default function RootLayout({

@@ -3,6 +3,7 @@
 import { notFound } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import VisualizadorQR from '@/components/VisualizadorQR';
+import QRWrapper from '@/components/QRWrapper'
 
 
 // Definimos qué datos esperamos del paciente
@@ -37,7 +38,7 @@ export default async function ResultadoPage({ params }: { params: Promise<{ id: 
     `)
     .eq('cod_qr', id) // Buscamos por el código que viene en la URL
     .maybeSingle();
-
+  
   // 2. Si hay error o no existe, mostramos 404
     if (error || !orden) {
       console.error("Error al buscar orden:", error);
@@ -69,7 +70,7 @@ export default async function ResultadoPage({ params }: { params: Promise<{ id: 
 
             {/* 🚀 Pasamos el código al componente hijo */}
             <div className="p-8 text-center my-6 border-b pb-4">
-              <VisualizadorQR cod_qr={orden.cod_qr} />
+              <QRWrapper cod_qr={orden.cod_qr} />
             </div>
 
             {/* Detalles del Análisis */}
